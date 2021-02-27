@@ -7,4 +7,7 @@ m(DB.Exec("SELECT OID AS OID,* FROM Testing",A_ThisFunc "`n" A_LineNumber))
 DB.Insert("Testing",[{ID:1,Name:"New Things 2"}],"ID")
 m(DB.Exec("SELECT OID AS OID,* FROM Testing",A_ThisFunc "`n" A_LineNumber))
 ExitApp
-#Include <MySQLite>
+MsgBox,% m("Nice","btn:ari")
+MsgBox
+ExitApp
+#Include Lib\Class MySQLite.ahk
