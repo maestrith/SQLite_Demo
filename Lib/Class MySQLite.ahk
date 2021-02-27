@@ -222,7 +222,7 @@
 					if(IsObject(b)&&b.OuterHtml)
 						String.=FullPath "." a " = " b.OuterHtml "`n"
 					else if(IsObject(b)&&!b.XML)
-						Obj2String(b,FullPath "." a,BottomBlank)
+						this.Obj2String(b,FullPath "." a,BottomBlank)
 					else{
 						if(BottomBlank=0)
 							String.=FullPath "." a " = " (b.XML?b.XML:b) "`n"
