@@ -7,7 +7,7 @@ Class MySQLite{
 		if(!MySQL.Init){
 			SQLFile:=FileExist(FF:=A_ScriptDir "\SQLite3.dll")?FF:A_MyDocuments "\AutoHotkey\Lib\SQLite3.dll",this.Create:=[]
 			if(!(DLL:=DllCall("LoadLibrary","Str",SQLFile,"UPtr"))){
-				m("File: " SQLFile " does not exist. Exiting")
+				this.m("File: " SQLFile " does not exist. Exiting")
 				ExitApp
 			}
 			this.DLL:=DLL,MySQL.Init:=1,MySQL.Keep[Object(this)]:=this,this.ColTypes:=[],this.ErrorObj:=[]
@@ -204,8 +204,40 @@ Class MySQLite{
 		*/
 	}m(x*){
 		for a,b in x
-			Msg.=b "`n"
+			Msg.=(IsObject(b)?this.Obj2String(b):b)"`n"
 		MsgBox,%Msg%
+	}Obj2String(Obj,FullPath:=1,BottomBlank:=0){
+		static String,Blank
+		if(FullPath=1)
+			String:=FullPath:=Blank:=""
+		Try{
+			if(Obj.XML){
+				String.=FullPath Obj.XML "`n",Current:=1
+			}
+		}
+		Try{
+			if(Obj.OuterHtml){
+				String.=FullPath Obj.OuterHtml "`n",Current:=1
+			}
+		}if(!Current){
+			if(IsObject(Obj)){
+				for a,b in Obj{
+					if(IsObject(b)&&b.OuterHtml)
+						String.=FullPath "." a " = " b.OuterHtml "`n"
+					else if(IsObject(b)&&!b.XML)
+						Obj2String(b,FullPath "." a,BottomBlank)
+					else{
+						if(BottomBlank=0)
+							String.=FullPath "." a " = " (b.XML?b.XML:b) "`n"
+						else if(b!="")
+							String.=FullPath "." a " = " (b.XML?b.XML:b) "`n"
+						else
+							Blank.=FullPath "." a " =`n"
+					}
+				}
+			}
+		}	
+		return String Blank
 	}Open(File,Password:="",Flag:=6,Debug:=1){
 		SplitPath,File,,Dir,Ext,NNE
 		if(FileExist(FF:=(Dir:=Dir?Dir "\":A_ScriptDir "\") NNE " Password.txt"))
@@ -217,15 +249,15 @@ Class MySQLite{
 		Flag|=0x00020000
 		RC:=DllCall("SQlite3.dll\sqlite3_open_v2","Ptr",&UTF8,"PtrP",HDB,"Int",Flag,"Ptr",0,"CdeclInt")
 		if(ErrorLevel)
-			return False,this._Path:="",this.ErrorMsg:="DLLCall sqlite3_open_v2 failed!",this.ErrorCode:=ErrorLevel,(Debug?m("Path: " this._Path,"Error Message: " this.ErrorMsg,"Error Code: " this.ErrorCode):"")
+			return False,this._Path:="",this.ErrorMsg:="DLLCall sqlite3_open_v2 failed!",this.ErrorCode:=ErrorLevel,(Debug?this.m("Path: " this._Path,"Error Message: " this.ErrorMsg,"Error Code: " this.ErrorCode):"")
 		if(RC)
-			return False,this._Path:="",this.ErrorMsg:=this.ErrMsg(),this.ErrorCode:=RC,(Debug?m("Path: " this._Path,"Error Message: " this.ErrorMsg,"Error Code: " this.ErrorCode):"")
+			return False,this._Path:="",this.ErrorMsg:=this.ErrMsg(),this.ErrorCode:=RC,(Debug?this.m("Path: " this._Path,"Error Message: " this.ErrorMsg,"Error Code: " this.ErrorCode):"")
 		this.Handle:=HDB
 		this.Exec("PRAGMA busy_timeout=4000")
 		if(Password){
 			this.Exec("PRAGMA KEY=" this.Clean(Password))
 			if(!this.Exec("PRAGMA encoding").1.Encoding)
-				return m("Database is not secure"),this.Close()
+				return this.m("Database is not secure"),this.Close()
 		}return 1
 	}ProcessQuery(Columns,ColumnText,ColumnNames){
 		static Count:=0
@@ -246,7 +278,7 @@ Class MySQLite{
 		this.UTF8(SQL,UTF8)
 		RC:=DllCall(this.Prepare,"Ptr",this.Handle,"Ptr",&UTF8,"Int",-1,"PtrP",Query,"Ptr",0,"CdeclInt")
 		if(ErrorLevel||RC)
-			return 0,(RC?(this.ErrorMsg:=A_ThisFunc ": " this.ErrMsg(RC,A_ThisFunc)):(this.ErrorMsg:=A_ThisFunc ": DllCall sqlite3_prepare_v2 failed!`nError Code: " ErrorLevel)),this.ErrorCode:=(RC?RC:ErrorLevel),m(this.ErrorMsg,(this.ErrorCode+0?"":this.ErrorCode))
+			return 0,(RC?(this.ErrorMsg:=A_ThisFunc ": " this.ErrMsg(RC,A_ThisFunc)):(this.ErrorMsg:=A_ThisFunc ": DllCall sqlite3_prepare_v2 failed!`nError Code: " ErrorLevel)),this.ErrorCode:=(RC?RC:ErrorLevel),this.m(this.ErrorMsg,(this.ErrorCode+0?"":this.ErrorCode))
 		for BlobNum,Blob in Array{
 			if(!(Blob.Addr) || !(Blob.Size)){
 				this.ErrorMsg := A_ThisFunc ": Invalid parameter BlobArray!"
@@ -269,7 +301,7 @@ Class MySQLite{
 		if(ErrorLevel){
 			this.ErrorMsg := A_ThisFunc ": DllCall sqlite3_step failed!"
 			this.ErrorCode := ErrorLevel
-			m(this,"","Here")
+			this.m(this,"","Here")
 			return 0
 		}
 		if((RC) && (RC <> 101)){
@@ -296,7 +328,7 @@ Class MySQLite{
 		if(!Tables[Table]){
 			this.Exec("CREATE " (Temporary?"TEMPORARY":"") " TABLE IF NOT EXISTS " this.Clean(Table) "(" SQL ")" Extra,1)
 			if(!Temporary)
-				m("Function: " A_ThisFunc,"Label: " A_ThisLabel,"Line: " A_LineNumber,"`n`n",this.SQL)
+				this.m("Function: " A_ThisFunc,"Label: " A_ThisLabel,"Line: " A_LineNumber,"`n`n",this.SQL)
 		}
 	}UTF8(String,ByRef UTF8){
 		VarSetCapacity(UTF8,StrPut(String,"UTF-8")),StrPut(String,&UTF8,"UTF-8")
@@ -322,17 +354,13 @@ Class MySQLite{
 				for a,b in Obj
 					this.CCC.=a ","
 			}if(Obj.Count()!=this.ColWidth){
-				m("DIFFERENT WIDTHS, Send it!",this.PassObj)
+				this.m("DIFFERENT WIDTHS, Send it!",this.PassObj)
 				
 				
 				this.Exec(Foo:="INSERT INTO " this.Clean(Table) "(" Trim(Col,",") ") VALUES " Trim(TotalValues,",") (Unique?" ON CONFLICT(" Trim(UU,",") ") DO UPDATE SET " Trim(Row,","):""),A_LineNumber "`n" A_ThisFunc)
 				
 				
 			}
-			
-			/*
-				m(this.ColWidth)
-			*/
 			this.PassObj.Push(Obj)
 		}
 	}
